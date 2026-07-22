@@ -120,11 +120,27 @@ function AuthFormInner({ mode }: { mode: "login" | "register" }) {
         {!isRegister && (
           <button
             type="button"
-            onClick={() => {
-              setEmail("test_1783667796052@example.com");
-              setPassword("password123");
+            disabled={loading}
+            onClick={async () => {
+              setError(null);
+              setLoading(true);
+              try {
+                const res = await fetch("/api/auth/login", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ email: "test_1783667796052@example.com", password: "password123" }),
+                });
+                const data = await res.json();
+                if (!res.ok) { setError(data.error ?? "Dev login failed"); return; }
+                router.push("/dashboard");
+                router.refresh();
+              } catch {
+                setError("Network error.");
+              } finally {
+                setLoading(false);
+              }
             }}
-            className="w-full rounded-xl border border-dashed border-line py-2 text-xs text-muted transition-colors hover:border-accent/40 hover:text-ink-soft"
+            className="w-full rounded-xl border border-dashed border-red-400 py-2 text-xs font-medium text-red-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
           >
             🛠 Dev login
           </button>
