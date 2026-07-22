@@ -116,6 +116,19 @@ function AuthFormInner({ mode }: { mode: "login" | "register" }) {
         <Button type="submit" size="lg" loading={loading} className="w-full">
           {isRegister ? "Create account" : "Sign in"}
         </Button>
+
+        {!isRegister && (
+          <button
+            type="button"
+            onClick={() => {
+              setEmail("test_1783667796052@example.com");
+              setPassword("password123");
+            }}
+            className="w-full rounded-xl border border-dashed border-line py-2 text-xs text-muted transition-colors hover:border-accent/40 hover:text-ink-soft"
+          >
+            🛠 Dev login
+          </button>
+        )}
       </form>
 
       <p className="mt-6 text-center text-sm text-ink-soft">
