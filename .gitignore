@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local storage + sqlite db
+/storage
+/prisma/dev.db
+/prisma/dev.db-journal
+/prisma/migrations/dev.db*
+
+# migration dump (contains hashed passwords — never commit)
+/scripts/db-dump.json

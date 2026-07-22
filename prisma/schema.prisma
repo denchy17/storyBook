@@ -1,0 +1,92 @@
+// Prisma schema — Supabase PostgreSQL.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  books Book[]
+}
+
+model Book {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title        String   @default("Untitled Story")
+  dedication   String?
+  bookType     String   // kids | lovers | family | adventure ...
+  language     String   @default("English")
+
+  // Full personalization payload the user submitted (JSON string).
+  inputJson    String
+
+  // Art direction chosen / derived for the whole book.
+  styleName    String   @default("Storybook Watercolor")
+  stylePrompt  String   @default("")
+
+  // Pipeline state.
+  status       String   @default("DRAFT") // DRAFT | GENERATING | READY | FAILED
+  stage        String   @default("queued") // human-readable current step
+  progress     Int      @default(0)        // 0..100
+  errorMessage String?
+
+  // Shared style/character anchor image (generated first, reused as ref).
+  referenceImagePath String?
+  coverImagePath     String?
+
+  voiceId      String   @default("")
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  characters Character[]
+  pages      Page[]
+}
+
+model Character {
+  id          String  @id @default(cuid())
+  bookId      String
+  book        Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  role        String  // child | parent
+  name        String
+  age         String?
+  gender      String?
+  // Free-form appearance / personality notes from the form.
+  description String  @default("")
+  // Uploaded reference photo (used for face fidelity).
+  photoPath   String?
+
+  createdAt   DateTime @default(now())
+}
+
+model Page {
+  id          String  @id @default(cuid())
+  bookId      String
+  book        Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  index       Int     // 0-based page-pair index
+  text        String  @default("")
+  imagePrompt String  @default("")
+  imagePath   String?
+  audioPath   String?
+
+  status      String  @default("PENDING") // PENDING | TEXT_READY | IMAGE_READY | AUDIO_READY | DONE | FAILED
+
+  createdAt   DateTime @default(now())
+
+  @@unique([bookId, index])
+}
