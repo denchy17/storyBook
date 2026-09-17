@@ -1,7 +1,10 @@
-# NOTE: the app now stores its data on the local filesystem (SQLite at
-# prisma/dev.db + assets under ./storage). Netlify functions run with a
-# read-only, per-invocation filesystem, so writes will not persist here —
-# see the "Deploying" section in README.md.
+# Data lives off-box so it survives Netlify's read-only, per-invocation function
+# containers: hosted Postgres for the database, Netlify Blobs for assets.
+#
+# Migrations deliberately do NOT run here. The build would need to reach the
+# database over a direct (often IPv6-only) connection, which is an easy way to
+# break a deploy for no gain — run `prisma migrate deploy` from a laptop when the
+# schema actually changes.
 [build]
   command = "npx prisma generate && npm run build"
   publish = ".next"

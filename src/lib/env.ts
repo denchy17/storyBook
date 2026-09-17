@@ -14,7 +14,8 @@ export const env = {
   anthropicApiKey: required("ANTHROPIC_API_KEY"),
   elevenLabsApiKey: required("ELEVENLABS_API_KEY"),
   elevenLabsVoiceId: required("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM"),
-  // Where images / narration / uploads are written on disk.
+  // Local dev only — where images / narration / uploads are written on disk.
+  // On Netlify the app writes to Netlify Blobs instead and this is unused.
   storageDir: required("STORAGE_DIR", "./storage"),
 };
 

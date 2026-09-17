@@ -1,12 +1,18 @@
-// Prisma schema — local SQLite file (prisma/dev.db), owned by the app itself.
+// Prisma schema — hosted Postgres (Supabase), so the data survives Netlify's
+// per-invocation, read-only function containers.
+//
+// DATABASE_URL is the pooled connection (…-pooler.…) used at runtime; DIRECT_URL
+// is the unpooled one, which `prisma migrate` needs because migrations open a
+// session-level advisory lock that a transaction pooler won't hold.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {

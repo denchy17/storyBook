@@ -22,21 +22,21 @@ swipe/keyboard/auto‑turn narration) and **downloaded as a PDF**.
 
 - **Next.js 16** (App Router) + **React 19** + **TypeScript**
 - **Tailwind CSS v4** — warm, editorial design system (SVG icons, no emojis)
-- **Prisma + SQLite** for the database — a single `prisma/dev.db` file, no
-  external database service
+- **Prisma + Postgres** for the database — hosted on Supabase
 - **Custom JWT auth** (jose + bcrypt, httpOnly cookie sessions)
 - **react-pageflip** for the book reader, **pdf-lib** for PDF export
-- Local file storage under `./storage`, served through an authenticated route
-
-The app owns its own data: everything it needs is the SQLite file plus the
-`./storage` folder sitting next to it. There is no Supabase (or any other
-hosted backend) in the loop.
+- Asset storage through an authenticated route — Netlify Blobs when deployed,
+  the local `./storage` folder during development
 
 ## Getting started
 
+Point `DATABASE_URL` / `DIRECT_URL` at the Postgres database first (Supabase
+project `uyrfcalhxdycufhrmeyh`); any Postgres will do.
+
 ```bash
 npm install
-npx prisma migrate deploy   # creates prisma/dev.db
+cp .env.example .env        # then fill in the connection strings + API keys
+npx prisma migrate deploy   # creates the schema
 npm run seed                # creates a test account
 npm run dev                 # http://localhost:3000
 ```
@@ -58,8 +58,9 @@ Environment variables live in `.env` (copy `.env.example`):
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | SQLite file, e.g. `file:./dev.db` (relative to `prisma/`) |
-| `STORAGE_DIR` | Where images/audio/uploads are written (default `./storage`) |
+| `DATABASE_URL` | Postgres, pooled connection string |
+| `DIRECT_URL` | Postgres, unpooled — used by `prisma migrate` only |
+| `STORAGE_DIR` | Local dev only: where assets are written (default `./storage`) |
 | `AUTH_SECRET` | Signs session JWTs |
 | `GEMINI_API_KEY` | Nano Banana 2 (Google Gemini) |
 | `ANTHROPIC_API_KEY` | Claude Sonnet 4.6 |
@@ -111,24 +112,44 @@ concurrency). The frontend polls the book's status and shows live progress.
 
 ## Deploying
 
-The database and the asset storage are both **files on the server's disk**, so
-the app needs a host with a persistent, writable filesystem and a single
-long-lived Node process — `npm run build && npm start` on a VPS, a Docker
-container with `./storage` and `prisma/dev.db` on a volume, Fly.io, Render, etc.
-The in-process job runner (`src/lib/jobs.ts`) assumes the same thing.
+Netlify functions get a read-only filesystem and a fresh container per
+invocation, so nothing the app writes locally survives the request. Both stores
+therefore live off-box:
 
-> **Netlify:** the current `netlify.toml` still builds, but Netlify's serverless
-> functions get a read-only filesystem and a fresh container per invocation, so
-> SQLite writes and `./storage` uploads will **not** persist there. Deploy to a
-> persistent host, or swap `src/lib/storage.ts` + the Prisma datasource for a
-> hosted blob store and database. Whichever you pick, update the site's env vars
-> to match `.env.example` (any leftover `SUPABASE_*` / `DIRECT_URL` values and a
-> Postgres `DATABASE_URL` will now break startup — the datasource is `sqlite`).
+- **Database** — hosted Postgres on [Supabase](https://supabase.com).
+  `DATABASE_URL` is the transaction-pooler string (port 6543, needs
+  `?pgbouncer=true&connection_limit=1`), `DIRECT_URL` the direct one (port 5432)
+  that `prisma migrate` needs for its advisory lock.
+- **Assets** — [Netlify Blobs](https://docs.netlify.com/blobs/overview/), which
+  needs no credentials: `@netlify/blobs` picks the site up from the function
+  runtime. `src/lib/storage.ts` falls back to the filesystem under
+  `STORAGE_DIR` when `NETLIFY` is unset, so `npm run dev` still works unchanged.
+
+### Setting up the site
+
+1. Restore the Supabase project and copy both connection strings.
+2. In **Site configuration → Environment variables**, set everything in
+   `.env.example`: `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, and the three AI
+   keys. Delete any leftover `SUPABASE_*` values.
+3. Deploy. The build does *not* run migrations — apply schema changes with
+   `npx prisma migrate deploy` from a laptop.
+4. Seed a login if the database is empty: `npm run seed` with `.env` pointed at
+   the same database.
+
+> **Book generation does not work on Netlify yet.** `POST /api/books` returns as
+> soon as the row is written and leaves `runBookGeneration` running in the
+> background via the in-process queue in `src/lib/jobs.ts`. Netlify freezes the
+> container once the response is sent, so generation dies partway and the book
+> stays stuck in `GENERATING`. Signing in, the library and reading finished
+> books all work; generating a new one needs that pipeline moved to a
+> [background function](https://docs.netlify.com/functions/background-functions/)
+> (15-minute cap) or an external queue.
 
 ## Notes & next steps
 
 - MVP scope: exactly two characters (a child + a parent) and 10 page pairs.
-- Storage keys (`books/<id>/pages/3.png`, `uploads/<userId>/...`) are resolved
-  through `resolveKey()` in `src/lib/storage.ts`, which pins every path inside
-  `STORAGE_DIR` — they come from user-controlled URL segments, so keep that
-  guard in place if you change the storage backend.
+- Storage keys (`books/<id>/pages/3.png`, `uploads/<userId>/...`) go through
+  `normalizeKey()` in `src/lib/storage.ts` before either backend sees them. They
+  come from user-controlled URL segments, so keep that guard: on disk a raw join
+  is a path-traversal hole, and the ownership check in `/api/files/[...path]`
+  reads the owner out of the key itself, so it has to see the canonical form.
