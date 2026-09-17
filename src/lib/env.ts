@@ -14,8 +14,8 @@ export const env = {
   anthropicApiKey: required("ANTHROPIC_API_KEY"),
   elevenLabsApiKey: required("ELEVENLABS_API_KEY"),
   elevenLabsVoiceId: required("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM"),
-  supabaseUrl: required("SUPABASE_URL"),
-  supabaseKey: required("SUPABASE_KEY"),
+  // Where images / narration / uploads are written on disk.
+  storageDir: required("STORAGE_DIR", "./storage"),
 };
 
 // Model identifiers (kept in one place so they're easy to swap).

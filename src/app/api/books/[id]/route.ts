@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { serializeBook } from "@/lib/serialize";
+import { removePrefix } from "@/lib/storage";
 import { fail, handleError, json } from "@/lib/http";
 
 export async function GET(
@@ -34,6 +35,11 @@ export async function DELETE(
     });
     if (!book || book.userId !== user.id) return fail("Not found", 404);
     await prisma.book.delete({ where: { id } });
+    // Files now live on our own disk, so the row going away has to take the
+    // illustrations and narration with it.
+    await removePrefix(`books/${id}`).catch((err) =>
+      console.error(`[books] failed to remove files for ${id}`, err),
+    );
     return json({ ok: true });
   } catch (err) {
     return handleError(err);

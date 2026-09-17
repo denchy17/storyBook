@@ -1,3 +1,7 @@
+# NOTE: the app now stores its data on the local filesystem (SQLite at
+# prisma/dev.db + assets under ./storage). Netlify functions run with a
+# read-only, per-invocation filesystem, so writes will not persist here —
+# see the "Deploying" section in README.md.
 [build]
   command = "npx prisma generate && npm run build"
   publish = ".next"

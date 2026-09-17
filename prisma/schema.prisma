@@ -1,13 +1,12 @@
-// Prisma schema — Supabase PostgreSQL.
+// Prisma schema — local SQLite file (prisma/dev.db), owned by the app itself.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model User {
