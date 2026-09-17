@@ -1,5 +1,5 @@
 # Data lives off-box so it survives Netlify's read-only, per-invocation function
-# containers: hosted Postgres for the database, Netlify Blobs for assets.
+# containers: Supabase Postgres for the database, Supabase Storage for assets.
 #
 # Migrations deliberately do NOT run here. The build would need to reach the
 # database over a direct (often IPv6-only) connection, which is an easy way to

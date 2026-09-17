@@ -14,9 +14,10 @@ export const env = {
   anthropicApiKey: required("ANTHROPIC_API_KEY"),
   elevenLabsApiKey: required("ELEVENLABS_API_KEY"),
   elevenLabsVoiceId: required("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM"),
-  // Local dev only — where images / narration / uploads are written on disk.
-  // On Netlify the app writes to Netlify Blobs instead and this is unused.
-  storageDir: required("STORAGE_DIR", "./storage"),
+  // Supabase Storage — the private "fable" bucket holds every asset. SUPABASE_KEY
+  // is the service_role key: the bucket is private, so the anon key cannot write.
+  supabaseUrl: required("SUPABASE_URL"),
+  supabaseKey: required("SUPABASE_KEY"),
 };
 
 // Model identifiers (kept in one place so they're easy to swap).

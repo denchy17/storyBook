@@ -25,8 +25,8 @@ swipe/keyboard/auto‑turn narration) and **downloaded as a PDF**.
 - **Prisma + Postgres** for the database — hosted on Supabase
 - **Custom JWT auth** (jose + bcrypt, httpOnly cookie sessions)
 - **react-pageflip** for the book reader, **pdf-lib** for PDF export
-- Asset storage through an authenticated route — Netlify Blobs when deployed,
-  the local `./storage` folder during development
+- **Supabase Storage** for assets (private `fable` bucket), served through an
+  authenticated route
 
 ## Getting started
 
@@ -60,7 +60,8 @@ Environment variables live in `.env` (copy `.env.example`):
 | --- | --- |
 | `DATABASE_URL` | Postgres, pooled connection string |
 | `DIRECT_URL` | Postgres, unpooled — used by `prisma migrate` only |
-| `STORAGE_DIR` | Local dev only: where assets are written (default `./storage`) |
+| `SUPABASE_URL` | `https://<project-ref>.supabase.co` |
+| `SUPABASE_KEY` | service_role key — the `fable` bucket is private |
 | `AUTH_SECRET` | Signs session JWTs |
 | `GEMINI_API_KEY` | Nano Banana 2 (Google Gemini) |
 | `ANTHROPIC_API_KEY` | Claude Sonnet 4.6 |
@@ -120,17 +121,15 @@ therefore live off-box:
   `DATABASE_URL` is the transaction-pooler string (port 6543, needs
   `?pgbouncer=true&connection_limit=1`), `DIRECT_URL` the direct one (port 5432)
   that `prisma migrate` needs for its advisory lock.
-- **Assets** — [Netlify Blobs](https://docs.netlify.com/blobs/overview/), which
-  needs no credentials: `@netlify/blobs` picks the site up from the function
-  runtime. `src/lib/storage.ts` falls back to the filesystem under
-  `STORAGE_DIR` when `NETLIFY` is unset, so `npm run dev` still works unchanged.
+- **Assets** — Supabase Storage, private `fable` bucket. `SUPABASE_KEY` is the
+  service_role key; a private bucket rejects the anon key.
 
 ### Setting up the site
 
 1. Restore the Supabase project and copy both connection strings.
 2. In **Site configuration → Environment variables**, set everything in
-   `.env.example`: `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, and the three AI
-   keys. Delete any leftover `SUPABASE_*` values.
+   `.env.example`: `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_KEY`,
+   `AUTH_SECRET`, and the three AI keys.
 3. Deploy. The build does *not* run migrations — apply schema changes with
    `npx prisma migrate deploy` from a laptop.
 4. Seed a login if the database is empty: `npm run seed` with `.env` pointed at
@@ -149,7 +148,7 @@ therefore live off-box:
 
 - MVP scope: exactly two characters (a child + a parent) and 10 page pairs.
 - Storage keys (`books/<id>/pages/3.png`, `uploads/<userId>/...`) go through
-  `normalizeKey()` in `src/lib/storage.ts` before either backend sees them. They
-  come from user-controlled URL segments, so keep that guard: on disk a raw join
-  is a path-traversal hole, and the ownership check in `/api/files/[...path]`
-  reads the owner out of the key itself, so it has to see the canonical form.
+  `normalizeKey()` in `src/lib/storage.ts`. They come from user-controlled URL
+  segments, and the ownership check in `/api/files/[...path]` reads the owner out
+  of the key itself — so a key containing `..` must be rejected, not collapsed,
+  or it gets authorized as one path and read as another.
